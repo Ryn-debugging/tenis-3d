@@ -20,6 +20,7 @@ export class SaveManager {
   getDefaultData() {
     return {
       version: SAVE_SCHEMA_VERSION,
+      manualMovementMigrated: true,
       xp: 0,
       level: 1,
       coins: 0,
@@ -28,7 +29,7 @@ export class SaveManager {
       selectedDifficulty: 'normal',
       settings: {
         quality: 'high',
-        movementAssist: true,
+        movementAssist: false,
         cameraShake: true,
         sfxVolume: 80,
         bgmVolume: 65,
@@ -98,12 +99,13 @@ export class SaveManager {
         : 'normal';
 
     const rawSettings = raw.settings && typeof raw.settings === 'object' ? raw.settings : {};
+    const hasMigratedManual = raw.manualMovementMigrated === true;
     const settings = {
       quality: rawSettings.quality === 'low' ? 'low' : 'high',
       movementAssist:
-        typeof rawSettings.movementAssist === 'boolean'
+        hasMigratedManual && typeof rawSettings.movementAssist === 'boolean'
           ? rawSettings.movementAssist
-          : defaults.settings.movementAssist,
+          : false,
       cameraShake:
         typeof rawSettings.cameraShake === 'boolean'
           ? rawSettings.cameraShake
@@ -146,6 +148,7 @@ export class SaveManager {
 
     return {
       version: SAVE_SCHEMA_VERSION,
+      manualMovementMigrated: true,
       xp,
       level,
       coins,

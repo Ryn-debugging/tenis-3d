@@ -243,7 +243,7 @@ export class MatchManager {
     }
   }
 
-  executeShot({ hitter, shotType, aimX, aimZ, timingGrade }) {
+  executeShot({ hitter, shotType, aimX, aimZ, timingGrade, unforcedError = false }) {
     const ballPos = { ...this.ball.physics.position };
     const serveSide = this.scoring.getServeSide();
 
@@ -271,7 +271,8 @@ export class MatchManager {
       aimX,
       aimZ,
       ballPos,
-      serveSide
+      serveSide,
+      unforcedError
     });
 
     this.firstBounceWasIn = false;
@@ -321,7 +322,7 @@ export class MatchManager {
 
     if (hitter === 'player') {
       this.showShotGrade(timingGrade, shotParams.resolvedShotType);
-      this.ai.notifyPlayerHitBall();
+      this.ai.notifyPlayerHitBall({ rallyHitCount: this.rallyHitCount });
       this.player.canMove = true;
     }
 
@@ -630,7 +631,8 @@ export class MatchManager {
         shotType: aiShot.shotType,
         aimX: aiShot.aimX,
         aimZ: aiShot.aimZ,
-        timingGrade: aiShot.grade
+        timingGrade: aiShot.grade,
+        unforcedError: Boolean(aiShot.unforcedError)
       });
     }
   }

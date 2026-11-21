@@ -37,7 +37,8 @@ export class ShotSystem {
     aimX = 0,
     aimZ = 0,
     ballPos = { x: 0, y: 1.0, z: 10 },
-    serveSide = 'deuce'
+    serveSide = 'deuce',
+    unforcedError = false
   }) {
     const dirZ = hitter === 'player' ? -1 : 1; // Player hits toward -Z; AI hits toward +Z
     const isPerfect = timingGrade === 'PERFECT';
@@ -80,7 +81,7 @@ export class ShotSystem {
 
     // Balance AI placement so player always has a fair chance to reach returns
     if (hitter === 'ai') {
-      maxSafeX = Math.min(maxSafeX, 4.55);
+      maxSafeX = Math.min(maxSafeX, 4.45);
     }
 
     let targetX = aimX * maxSafeX;
@@ -88,6 +89,17 @@ export class ShotSystem {
     // Early/late MISS-grade contact loses directional precision
     if (isMiss) {
       targetX = targetX * 0.45 + (aimX >= 0 ? 0.8 : -0.8);
+    }
+
+    // Realistic AI unforced error (slightly wide or long OUT ball)
+    let outLongBonus = 0;
+    if (hitter === 'ai' && unforcedError) {
+      if (Math.abs(aimX) >= 0.35) {
+        const sideSign = aimX >= 0 ? 1 : -1;
+        targetX = sideSign * (COURT_CONFIG.PLAYABLE_HALF_WIDTH + 0.65);
+      } else {
+        outLongBonus = 2.6;
+      }
     }
 
     let targetDepth = 9.0;
@@ -131,6 +143,10 @@ export class ShotSystem {
         spinX = isMiss ? 0 : aimX * (isPerfect ? 1.5 : 0.6);
         break;
       }
+    }
+
+    if (outLongBonus > 0) {
+      targetDepth = Math.max(targetDepth + outLongBonus, COURT_CONFIG.HALF_LENGTH + 0.65);
     }
 
     // Ensure the trajectory clears the net at z = 0

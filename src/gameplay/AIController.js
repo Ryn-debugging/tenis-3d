@@ -1,39 +1,112 @@
 import { COURT_CONFIG } from '../core/SceneManager.js';
 import { RacketController } from './RacketController.js';
 
+/**
+ * Rebalanced AI Difficulty Presets
+ * Tuned so EASY (700-1000ms), NORMAL (350-550ms), and HARD (150-250ms) produce
+ * genuinely distinct, fair, human-like opponent behavior while remaining strictly beatable.
+ */
 export const AI_DIFFICULTY_PRESETS = {
   easy: {
     label: 'Easy',
-    reactionDelay: 0.25,
-    moveSpeed: 7.2,
-    predictionError: 0.85,
-    perfectRate: 0.18,
-    aggressiveness: 0.25
+    reactionDelayMin: 0.7,
+    reactionDelayMax: 1.0,
+    reactionDelay: 0.85,
+    moveSpeed: 5.2,
+    acceleration: 13.0,
+    homeRecoverySpeedScale: 0.65,
+    predictionError: 1.65,
+    postBounceNoiseScale: 0.75,
+    reachConfig: {
+      maxReachX: 1.55,
+      maxReachZ: 1.65,
+      goodWindowX: 1.25,
+      goodWindowZ: 1.2,
+      perfectWindowX: 0.72,
+      perfectWindowZ: 0.52
+    },
+    perfectRate: 0.06,
+    weakReturnRate: 0.36,
+    missReachableChance: 0.22,
+    unforcedErrorOutRate: 0.14,
+    allowSmash: false,
+    smashChance: 0.0,
+    powerShotChance: 0.05,
+    lobChance: 0.08,
+    placementAccuracy: 0.32,
+    shotScatter: 0.95,
+    aggressiveness: 0.2
   },
   normal: {
     label: 'Normal',
-    reactionDelay: 0.13,
-    moveSpeed: 9.2,
-    predictionError: 0.32,
-    perfectRate: 0.48,
-    aggressiveness: 0.55
+    reactionDelayMin: 0.35,
+    reactionDelayMax: 0.55,
+    reactionDelay: 0.45,
+    moveSpeed: 7.0,
+    acceleration: 20.0,
+    homeRecoverySpeedScale: 0.78,
+    predictionError: 0.95,
+    postBounceNoiseScale: 0.6,
+    reachConfig: {
+      maxReachX: 1.78,
+      maxReachZ: 1.88,
+      goodWindowX: 1.48,
+      goodWindowZ: 1.42,
+      perfectWindowX: 0.9,
+      perfectWindowZ: 0.65
+    },
+    perfectRate: 0.2,
+    weakReturnRate: 0.18,
+    missReachableChance: 0.11,
+    unforcedErrorOutRate: 0.07,
+    allowSmash: true,
+    smashChance: 0.38,
+    powerShotChance: 0.16,
+    lobChance: 0.2,
+    placementAccuracy: 0.56,
+    shotScatter: 0.62,
+    aggressiveness: 0.42
   },
   hard: {
     label: 'Hard',
-    reactionDelay: 0.05,
-    moveSpeed: 11.2,
-    predictionError: 0.06,
-    perfectRate: 0.82,
-    aggressiveness: 0.85
+    reactionDelayMin: 0.15,
+    reactionDelayMax: 0.25,
+    reactionDelay: 0.2,
+    moveSpeed: 8.4,
+    acceleration: 26.0,
+    homeRecoverySpeedScale: 0.9,
+    predictionError: 0.48,
+    postBounceNoiseScale: 0.42,
+    reachConfig: {
+      maxReachX: 1.92,
+      maxReachZ: 2.0,
+      goodWindowX: 1.62,
+      goodWindowZ: 1.54,
+      perfectWindowX: 1.05,
+      perfectWindowZ: 0.74
+    },
+    perfectRate: 0.38,
+    weakReturnRate: 0.09,
+    missReachableChance: 0.05,
+    unforcedErrorOutRate: 0.04,
+    allowSmash: true,
+    smashChance: 0.72,
+    powerShotChance: 0.3,
+    lobChance: 0.34,
+    placementAccuracy: 0.78,
+    shotScatter: 0.36,
+    aggressiveness: 0.65
   }
 };
 
 /**
  * AIController
  * Local JavaScript opponent controlling the top-court Yellow Duck character.
- * Predicts incoming ball trajectories with difficulty-based reaction delay, movement limits,
- * tactical shot selection, and all 8 Phase 4 procedural animation states:
- * 'idle', 'run', 'serve', 'forehand', 'backhand', 'smash', 'win', 'lose'.
+ * Enforces strict fairness rules:
+ * - Zero pre-hit destination foresight (only reacts after player hits the ball).
+ * - Randomized human reaction delay per difficulty (Easy 700-1000ms, Normal 350-550ms, Hard 150-250ms).
+ * - Physical velocity & acceleration limits inside court boundaries (no teleporting).
+ * - Persistent positioning error, difficulty-tuned reach, realistic whiffs & unforced errors.
  */
 export class AIController {
   constructor(scene, assetManager, difficulty = 'normal') {
@@ -55,14 +128,31 @@ export class AIController {
       maxZ: -1.15
     };
 
-    this.setDifficulty(difficulty);
-
+    this.homePos = { x: 0, z: -10.8 };
     this.targetPos = { x: 0, z: -11.0 };
+
     this.reactionTimer = 0;
+    this.lastAssignedReactionDelay = 0;
     this.hasLockedPrediction = false;
+    this.hasEvaluatedIncomingBall = false;
+    this.willWhiffCurrentShot = false;
+    this.hasWhiffedCurrentShot = false;
+    this.currentRallyHitCount = 0;
     this.predictionNoiseX = 0;
     this.predictionNoiseZ = 0;
     this.trackedShotId = null;
+
+    // Telemetry counters for gameplay balancing tests
+    this.stats = {
+      shotsAttempted: 0,
+      whiffedReachableShots: 0,
+      smashesExecuted: 0,
+      perfectReturns: 0,
+      weakReturns: 0,
+      unforcedErrors: 0
+    };
+
+    this.setDifficulty(difficulty);
 
     this.animTime = 0;
     this.recoilTimer = 0;
@@ -116,6 +206,9 @@ export class AIController {
   setDifficulty(level = 'normal') {
     this.difficultyKey = AI_DIFFICULTY_PRESETS[level] ? level : 'normal';
     this.preset = AI_DIFFICULTY_PRESETS[this.difficultyKey];
+    if (this.racket && this.preset.reachConfig) {
+      this.racket.setTimingConfig(this.preset.reachConfig);
+    }
   }
 
   setServePosition(serveSide = 'deuce', isServer = false) {
@@ -129,16 +222,82 @@ export class AIController {
     this.homePos = { x: this.position.x, z: this.position.z };
     this.targetPos.x = this.position.x;
     this.targetPos.z = this.position.z;
+    this.reactionTimer = 0;
     this.hasLockedPrediction = false;
+    this.hasEvaluatedIncomingBall = false;
+    this.willWhiffCurrentShot = false;
+    this.hasWhiffedCurrentShot = false;
     this.clearForcedAnimState();
     this.syncMesh();
   }
 
-  notifyPlayerHitBall() {
-    this.reactionTimer = this.preset.reactionDelay;
+  /**
+   * Called ONLY AFTER the player strikes the ball.
+   * Assigns a randomized human reaction delay within the active difficulty's [min, max] range
+   * and clears prior tracking so AI cannot know the destination before reacting.
+   */
+  notifyPlayerHitBall(context = {}) {
+    const minD = this.preset.reactionDelayMin;
+    const maxD = this.preset.reactionDelayMax;
+    const rolledDelay = minD + Math.random() * (maxD - minD);
+
+    this.lastAssignedReactionDelay = rolledDelay;
+    this.reactionTimer = rolledDelay;
     this.hasLockedPrediction = false;
+    this.hasEvaluatedIncomingBall = false;
+    this.willWhiffCurrentShot = false;
+    this.hasWhiffedCurrentShot = false;
+    this.currentRallyHitCount = context.rallyHitCount || 1;
+
+    // Roll positioning error once per incoming ball (persists after bounce)
     this.predictionNoiseX = (Math.random() - 0.5) * 2 * this.preset.predictionError;
-    this.predictionNoiseZ = (Math.random() - 0.5) * this.preset.predictionError;
+    this.predictionNoiseZ = (Math.random() - 0.5) * 2 * this.preset.predictionError;
+
+    // During reaction delay, AI only continues toward neutral home recovery — never toward the new ball
+    const home = this.homePos || { x: 0, z: -10.8 };
+    this.targetPos.x = home.x;
+    this.targetPos.z = home.z;
+  }
+
+  /**
+   * Evaluates once per incoming shot (after reaction delay finishes) whether the AI
+   * will misjudge timing and whiff a reachable ball based on difficulty, movement stretch,
+   * incoming shot velocity/type, and rally length.
+   */
+  evaluateIncomingBallMistake(ballPhysics, predictedStrikePos) {
+    this.hasEvaluatedIncomingBall = true;
+    this.willWhiffCurrentShot = false;
+
+    const lateralDist = predictedStrikePos
+      ? Math.abs(predictedStrikePos.strikeX - this.position.x)
+      : Math.abs(ballPhysics.position.x - this.position.x);
+
+    const isFastShot =
+      ballPhysics.shotType === 'POWER' ||
+      ballPhysics.shotType === 'SMASH' ||
+      ballPhysics.shotGrade === 'PERFECT';
+
+    // Gentle straight first shot right at AI's body initiates a rally smoothly;
+    // angled shots, fast shots, and ongoing rally exchanges apply full mistake probability.
+    if (lateralDist <= 1.15 && !isFastShot && this.currentRallyHitCount <= 1) {
+      return;
+    }
+
+    let missProb = this.preset.missReachableChance;
+    if (isFastShot) {
+      missProb += this.difficultyKey === 'easy' ? 0.14 : this.difficultyKey === 'normal' ? 0.08 : 0.06;
+    }
+    if (lateralDist > 2.4) {
+      missProb += this.difficultyKey === 'easy' ? 0.12 : this.difficultyKey === 'normal' ? 0.06 : 0.04;
+    }
+    if (this.currentRallyHitCount >= 4) {
+      // Fatigue / rally pressure so even Hard AI stays beatable in extended rallies
+      missProb += this.difficultyKey === 'easy' ? 0.12 : this.difficultyKey === 'normal' ? 0.05 : 0.03;
+    }
+
+    if (Math.random() < Math.min(0.6, missProb)) {
+      this.willWhiffCurrentShot = true;
+    }
   }
 
   syncMesh() {
@@ -147,11 +306,12 @@ export class AIController {
 
   /**
    * Updates AI positioning, trajectory prediction, and returns a shot command if the AI strikes the ball.
-   * Returns null or { shotType, aimX, aimZ, grade }
+   * Returns null or { shotType, aimX, aimZ, grade, unforcedError }
    */
   update(dt, ballPhysics, playerPos) {
     this.animTime += dt;
     let executedShot = null;
+    let isRecoveringHome = false;
 
     if (this.forcedStateTimer > 0) {
       this.forcedStateTimer = Math.max(0, this.forcedStateTimer - dt);
@@ -167,13 +327,24 @@ export class AIController {
         if (contact.canHit) {
           this.racket.startSwing('SERVE', 0, ballPhysics.position.y);
           this.triggerHitRecoil();
-          const aimX = (Math.random() - 0.5) * 1.1;
+          const aimSpread = this.difficultyKey === 'easy' ? 0.55 : this.difficultyKey === 'normal' ? 0.9 : 1.15;
+          const aimX = (Math.random() - 0.5) * aimSpread;
           this.homePos = { x: 0, z: -10.8 };
+
+          let serveGrade = 'GOOD';
+          const roll = Math.random();
+          if (roll < this.preset.perfectRate) {
+            serveGrade = 'PERFECT';
+          } else if (roll > 1 - this.preset.weakReturnRate * 0.65) {
+            serveGrade = 'MISS';
+          }
+
           executedShot = {
             shotType: 'SERVE',
             aimX,
             aimZ: 0,
-            grade: Math.random() < this.preset.perfectRate ? 'PERFECT' : 'GOOD'
+            grade: serveGrade,
+            unforcedError: false
           };
         }
       }
@@ -183,75 +354,140 @@ export class AIController {
       ballPhysics.lastHitter === 'player' &&
       !ballPhysics.blockedByNet
     ) {
-      // 2. Ball is approaching AI's side
+      // 2. Ball is approaching AI's side — strictly respect reaction delay before predicting!
       if (this.reactionTimer > 0) {
         this.reactionTimer = Math.max(0, this.reactionTimer - dt);
+        isRecoveringHome = true;
       } else {
+        let predicted = null;
         if (ballPhysics.bounceCount === 0) {
-          const pred = ballPhysics.predictLanding();
-          if (pred && pred.bounceZ <= 0.5) {
-            this.targetPos.x = pred.strikeX + this.predictionNoiseX;
+          predicted = ballPhysics.predictLanding();
+          if (predicted && predicted.bounceZ <= 0.5) {
+            this.targetPos.x = Math.max(
+              this.bounds.minX,
+              Math.min(this.bounds.maxX, predicted.strikeX + this.predictionNoiseX)
+            );
             this.targetPos.z = Math.min(
               this.bounds.maxZ,
-              Math.max(this.bounds.minZ, pred.strikeZ - 0.35 + this.predictionNoiseZ)
+              Math.max(this.bounds.minZ, predicted.strikeZ - 0.35 + this.predictionNoiseZ)
             );
             this.hasLockedPrediction = true;
           }
         } else {
-          this.targetPos.x = ballPhysics.position.x + ballPhysics.velocity.x * 0.08;
+          // After first bounce, retain scaled positioning error (never zero-error heat-seeking)
+          const postNoiseX = this.predictionNoiseX * this.preset.postBounceNoiseScale;
+          const postNoiseZ = this.predictionNoiseZ * this.preset.postBounceNoiseScale;
+          this.targetPos.x = Math.max(
+            this.bounds.minX,
+            Math.min(
+              this.bounds.maxX,
+              ballPhysics.position.x + ballPhysics.velocity.x * 0.05 + postNoiseX
+            )
+          );
           this.targetPos.z = Math.min(
             this.bounds.maxZ,
-            Math.max(this.bounds.minZ, ballPhysics.position.z - 0.3)
+            Math.max(this.bounds.minZ, ballPhysics.position.z - 0.32 + postNoiseZ)
           );
+        }
+
+        if (!this.hasEvaluatedIncomingBall) {
+          this.evaluateIncomingBallMistake(ballPhysics, predicted);
         }
 
         const readyToStrike =
           ballPhysics.bounceCount === 1 ||
           (ballPhysics.position.z < -1.2 &&
-            Math.abs(ballPhysics.position.z - this.position.z) < 1.35 &&
+            Math.abs(ballPhysics.position.z - this.position.z) < 1.25 &&
             ballPhysics.bounceCount === 0 &&
-            this.position.z > -5.5);
+            this.position.z > -5.5 &&
+            this.difficultyKey !== 'easy');
 
-        if (readyToStrike && !this.racket.isSwinging) {
+        if (readyToStrike && !this.racket.isSwinging && !this.hasWhiffedCurrentShot) {
           const contact = this.racket.evaluateContact(this.position, ballPhysics);
-          const lastResortLunge = ballPhysics.position.z <= this.position.z + 0.35;
-          if (contact.canHit && (contact.grade !== 'MISS' || lastResortLunge)) {
-            const decision = this.chooseReturnShot(ballPhysics, playerPos, contact.grade);
-            const offsetX = ballPhysics.position.x - this.position.x;
-            this.racket.startSwing(
-              decision.shotType,
-              offsetX,
-              ballPhysics.position.y
-            );
-            this.triggerHitRecoil();
-            this.homePos = { x: 0, z: -10.8 };
-            executedShot = decision;
+          if (contact.canHit) {
+            // If AI rolled a reachable-ball timing whiff, perform visible late swing without hitting ball
+            if (this.willWhiffCurrentShot) {
+              const offsetX = ballPhysics.position.x - this.position.x;
+              this.racket.startSwing('NORMAL', offsetX, ballPhysics.position.y);
+              this.hasWhiffedCurrentShot = true;
+              this.stats.shotsAttempted += 1;
+              this.stats.whiffedReachableShots += 1;
+            } else {
+              const lastResortLunge =
+                ballPhysics.position.z <= this.position.z + 0.25 &&
+                this.difficultyKey !== 'easy';
+
+              if (contact.grade !== 'MISS' || lastResortLunge) {
+                const decision = this.chooseReturnShot(ballPhysics, playerPos, contact.grade);
+                const offsetX = ballPhysics.position.x - this.position.x;
+                this.racket.startSwing(
+                  decision.shotType,
+                  offsetX,
+                  ballPhysics.position.y
+                );
+                this.triggerHitRecoil();
+                this.homePos = { x: 0, z: -10.8 };
+                this.stats.shotsAttempted += 1;
+                if (decision.shotType === 'SMASH') this.stats.smashesExecuted += 1;
+                if (decision.grade === 'PERFECT') this.stats.perfectReturns += 1;
+                if (decision.grade === 'MISS') this.stats.weakReturns += 1;
+                if (decision.unforcedError) this.stats.unforcedErrors += 1;
+                executedShot = decision;
+              }
+            }
           }
         }
       }
     } else {
+      // Ball is on player's side or inactive — drift calmly to neutral home position (zero foresight)
       const home = this.homePos || { x: 0, z: -10.8 };
       this.targetPos.x = home.x;
       this.targetPos.z = home.z;
+      isRecoveringHome = true;
     }
 
-    // Move smoothly toward targetPos respecting AI speed limits and court bounds
+    // Move smoothly with physical acceleration and strict speed limits (never teleport)
     const dx = this.targetPos.x - this.position.x;
     const dz = this.targetPos.z - this.position.z;
     const dist = Math.hypot(dx, dz);
 
-    if (dist > 0.12 && !this.forcedState) {
-      const stepSpeed = Math.min(this.preset.moveSpeed, dist / Math.max(dt, 0.008));
-      this.velocity.x = (dx / dist) * stepSpeed;
-      this.velocity.z = (dz / dist) * stepSpeed;
+    const maxSpeed = isRecoveringHome
+      ? this.preset.moveSpeed * this.preset.homeRecoverySpeedScale
+      : this.preset.moveSpeed;
+
+    let desiredVx = 0;
+    let desiredVz = 0;
+    if (dist > 0.14 && !this.forcedState) {
+      const targetSpeed = Math.min(maxSpeed, dist / Math.max(dt, 0.04));
+      desiredVx = (dx / dist) * targetSpeed;
+      desiredVz = (dz / dist) * targetSpeed;
+    }
+
+    const dvx = desiredVx - this.velocity.x;
+    const dvz = desiredVz - this.velocity.z;
+    const dvMag = Math.hypot(dvx, dvz);
+    const maxDeltaV = this.preset.acceleration * dt;
+
+    if (dvMag > maxDeltaV && dvMag > 0.0001) {
+      this.velocity.x += (dvx / dvMag) * maxDeltaV;
+      this.velocity.z += (dvz / dvMag) * maxDeltaV;
     } else {
-      this.velocity.x = 0;
-      this.velocity.z = 0;
+      this.velocity.x = desiredVx;
+      this.velocity.z = desiredVz;
+    }
+
+    // Strict maximum speed cap
+    const curSpeed = Math.hypot(this.velocity.x, this.velocity.z);
+    if (curSpeed > this.preset.moveSpeed) {
+      const clampRatio = this.preset.moveSpeed / curSpeed;
+      this.velocity.x *= clampRatio;
+      this.velocity.z *= clampRatio;
     }
 
     this.position.x += this.velocity.x * dt;
     this.position.z += this.velocity.z * dt;
 
+    // Strictly enforce court boundaries
     this.position.x = Math.max(this.bounds.minX, Math.min(this.bounds.maxX, this.position.x));
     this.position.z = Math.max(this.bounds.minZ, Math.min(this.bounds.maxZ, this.position.z));
 
@@ -287,35 +523,56 @@ export class AIController {
   }
 
   chooseReturnShot(ballPhysics, playerPos, rawContactGrade) {
+    // Cap PERFECT rate and inject realistic weak (MISS-grade) returns by difficulty
     let grade = rawContactGrade;
     if (grade === 'PERFECT' && Math.random() > this.preset.perfectRate) {
       grade = 'GOOD';
     }
+    if (grade !== 'MISS' && Math.random() < this.preset.weakReturnRate) {
+      grade = 'MISS';
+    }
 
     let shotType = 'NORMAL';
-    if (ballPhysics.position.y > 1.7 && this.position.z > -6.5) {
+    const isHighSmashBall = ballPhysics.position.y > 1.55 && this.position.z > -7.2;
+
+    if (
+      this.preset.allowSmash &&
+      isHighSmashBall &&
+      Math.random() < this.preset.smashChance
+    ) {
       shotType = 'SMASH';
-    } else if (playerPos && playerPos.z < 5.5 && Math.random() < this.preset.aggressiveness) {
+    } else if (
+      playerPos &&
+      playerPos.z < 5.5 &&
+      Math.random() < this.preset.lobChance
+    ) {
       shotType = 'LOB';
-    } else if (Math.random() < this.preset.aggressiveness * 0.45) {
+    } else if (grade !== 'MISS' && Math.random() < this.preset.powerShotChance) {
       shotType = 'POWER';
     }
 
+    // Placement accuracy & shot scatter by difficulty
     const playerX = playerPos ? playerPos.x : 0;
     const openCourtDir = playerX >= 0 ? -1 : 1;
-    const placementWeight = this.preset.aggressiveness;
-    const randomSpread = (Math.random() - 0.5) * 0.7;
+    const placementWeight = this.preset.placementAccuracy;
+    const randomSpread = (Math.random() - 0.5) * 2 * this.preset.shotScatter;
 
     let aimX =
-      openCourtDir * (0.45 + 0.38 * placementWeight) +
-      randomSpread * (1 - placementWeight * 0.6);
-    aimX = Math.max(-0.92, Math.min(0.92, aimX));
+      openCourtDir * (0.28 + 0.52 * placementWeight) * (this.difficultyKey === 'easy' ? 0.55 : 1.0) +
+      randomSpread * (1 - placementWeight * 0.55);
+    aimX = Math.max(-0.9, Math.min(0.9, aimX));
+
+    // Unforced OUT error chance (only on rally shots #2+ or stretched returns)
+    const unforcedError =
+      this.currentRallyHitCount >= 2 &&
+      Math.random() < this.preset.unforcedErrorOutRate;
 
     return {
       shotType,
       aimX,
       aimZ: 0,
-      grade
+      grade,
+      unforcedError
     };
   }
 

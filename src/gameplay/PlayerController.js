@@ -25,7 +25,7 @@ export class PlayerController {
     this.velocity = { x: 0, z: 0 };
     this.moveSpeed = this.characterProfile.moveSpeed;
     this.assistStrength = 0.42;
-    this.assistEnabled = true;
+    this.assistEnabled = false;
 
     this.bounds = {
       minX: -(COURT_CONFIG.PLAYABLE_HALF_WIDTH + 1.8),
@@ -66,7 +66,7 @@ export class PlayerController {
     return this.characterProfile;
   }
 
-  setMovementAssist(enabled = true) {
+  setMovementAssist(enabled = false) {
     this.assistEnabled = Boolean(enabled);
   }
 

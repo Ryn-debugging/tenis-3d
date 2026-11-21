@@ -53,7 +53,7 @@ export class MainMenu {
     this.selectedDifficulty = 'normal';
     this.settings = {
       quality: 'high',
-      movementAssist: true,
+      movementAssist: false,
       cameraShake: true,
       muted: false,
       sfxVolume: 80,
@@ -275,7 +275,7 @@ export class MainMenu {
     }
   }
 
-  setMovementAssist(enabled = true, notify = true) {
+  setMovementAssist(enabled = false, notify = true) {
     this.settings.movementAssist = Boolean(enabled);
     if (this.assistToggleBtn) {
       this.assistToggleBtn.textContent = this.settings.movementAssist ? 'ON' : 'OFF';

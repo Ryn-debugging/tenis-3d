@@ -1,6 +1,6 @@
 {
   "name": "tennis-angel",
-  "version": "0.1.0",
+  "version": "1.0.1",
   "private": true,
   "description": "TENNIS ANGEL - Colorful 3D Arcade Tennis Game built with Three.js",
   "type": "module",
