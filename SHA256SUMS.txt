@@ -1,0 +1,2 @@
+68d0498c1f6671d3d4949064e6cd33fb2c63f2f945ee2f3377fcc80bc902a1be  tennis-angel-v1.0.0-release.apk
+ca8fe8ec8087d5a8dd85da7a5f54d7d4f464d5533ed9822cf9f148b602b18a33  tennis-angel-v1.0.0-debug.apk
