@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">TENNIS ANGEL</string>
+    <string name="title_activity_main">TENNIS ANGEL</string>
+    <string name="package_name">com.ryndebugging.tennisangel</string>
+    <string name="custom_url_scheme">com.ryndebugging.tennisangel</string>
+</resources>

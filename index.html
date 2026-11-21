@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#d45d2a" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta
+      name="description"
+      content="TENNIS ANGEL — Colorful 3D Arcade Tennis Game for Mobile & Web Browsers"
+    />
+    <title>TENNIS ANGEL — 3D Arcade Tennis</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="192x192" href="/icons/icon-192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-192.png" />
+    <link rel="stylesheet" href="/src/styles/main.css" />
+    <link rel="stylesheet" href="/src/styles/gameplay.css" />
+    <link rel="stylesheet" href="/src/styles/menu.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Phase 0 Loading Screen -->
+      <div id="loading-screen" role="status" aria-live="polite">
+        <div class="loading-card">
+          <h1 class="loading-title">TENNIS ANGEL</h1>
+          <p class="loading-subtitle">Preparing 3D Clay Court...</p>
+          <div class="loading-bar-track">
+            <div id="loading-bar-fill" class="loading-bar-fill"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Portrait Orientation Hint for Mobile -->
+      <div id="orientation-notice" aria-hidden="true">
+        <div class="orientation-box">
+          <span class="orientation-icon">&#x21BB;</span>
+          <p>Rotate your device to <strong>Landscape</strong> for the best court view</p>
+        </div>
+      </div>
+
+      <!-- Three.js WebGL Viewport -->
+      <div id="game-container"></div>
+
+      <!-- Match HUD & Phase 2/3/4 Mobile Controls Overlay -->
+      <div id="hud-overlay">
+        <header class="match-top-bar">
+          <!-- Top-Left: Phase 3 Power Energy Meter -->
+          <div class="top-bar-left">
+            <div id="hud-energy-card" class="energy-card" title="Power Shot Energy (40% per Power Shot)">
+              <div class="energy-header">
+                <span class="energy-label">&#9889; POWER ENERGY</span>
+                <span id="hud-energy-value" class="energy-value">100%</span>
+              </div>
+              <div class="energy-track">
+                <div id="hud-energy-fill" class="energy-fill" style="width: 100%"></div>
+                <div class="energy-cost-marker" title="Min Power Shot Cost (40%)"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="scoreboard-cluster">
+            <div class="score-card player-card">
+              <span id="hud-player-badge" class="player-badge angel-badge">ANGEL (YOU)</span>
+              <span id="hud-player-points" class="score-points">0</span>
+              <span id="hud-player-rounds" class="score-rounds" title="Rounds Won">R: 0</span>
+            </div>
+
+            <div class="match-center-status">
+              <div id="hud-round-label" class="round-pill">ROUND 1 &bull; FIRST TO 7</div>
+              <div id="hud-serve-indicator" class="serve-pill">YOUR SERVE</div>
+              <div id="hud-situation-alert" class="situation-pill hidden">MATCH POINT!</div>
+            </div>
+
+            <div class="score-card ai-card">
+              <span id="hud-ai-rounds" class="score-rounds" title="Rounds Won">R: 0</span>
+              <span id="hud-ai-points" class="score-points">0</span>
+              <span id="hud-ai-badge" class="player-badge duck-badge">DUCK (NORMAL)</span>
+            </div>
+          </div>
+
+          <div class="top-bar-actions" style="gap: 0.45rem">
+            <button
+              id="btn-hud-menu"
+              type="button"
+              class="hud-menu-btn"
+              aria-label="Open Main Menu"
+              title="Main Menu & Character Select"
+            >
+              <span>&#9733; MENU</span>
+            </button>
+            <button
+              id="btn-pause"
+              type="button"
+              class="pause-btn"
+              aria-label="Pause Match"
+              title="Pause Match (P / Esc)"
+            >
+              <span class="pause-bars" aria-hidden="true"><span></span><span></span></span>
+              <span class="pause-label">PAUSE</span>
+            </button>
+          </div>
+        </header>
+
+        <!-- Dynamic Point / Shot Feedback Banner -->
+        <div id="hud-callout-container" class="callout-container">
+          <div id="hud-shot-grade" class="shot-grade-banner hidden">PERFECT!</div>
+          <div id="hud-point-banner" class="point-banner hidden">POINT! &bull; ANGEL</div>
+        </div>
+
+        <!-- Phase 2 Mobile Landscape Touch Controls Layer -->
+        <div id="mobile-controls-layer" class="mobile-controls-layer">
+          <!-- Left Side: Virtual Joystick -->
+          <div
+            id="joystick-zone"
+            class="joystick-zone"
+            role="slider"
+            aria-label="Movement Joystick"
+          >
+            <div id="joystick-base" class="joystick-base">
+              <span class="joy-dir joy-up" aria-hidden="true">&#9650;</span>
+              <span class="joy-dir joy-down" aria-hidden="true">&#9660;</span>
+              <span class="joy-dir joy-left" aria-hidden="true">&#9664;</span>
+              <span class="joy-dir joy-right" aria-hidden="true">&#9654;</span>
+              <div class="joystick-inner-ring"></div>
+              <div id="joystick-knob" class="joystick-knob">
+                <span class="knob-star" aria-hidden="true">&#9733;</span>
+              </div>
+            </div>
+            <span class="joystick-caption">MOVE</span>
+          </div>
+
+          <!-- Center Bottom Status Prompt -->
+          <footer class="match-bottom-bar">
+            <div id="hud-prompt" class="action-prompt">
+              Tap <strong>SERVE</strong> or Press <kbd>SPACE</kbd> to Toss &amp; Serve
+            </div>
+          </footer>
+
+          <!-- Right Side: Arcade Shot Action Cluster (HIT, POWER, LOB, SMASH, SERVE) -->
+          <div id="action-controls-zone" class="action-controls-zone">
+            <!-- Contextual SERVE button when match is waiting for player's serve -->
+            <button
+              id="btn-serve"
+              type="button"
+              class="arcade-btn btn-serve"
+              aria-label="Serve Ball"
+            >
+              <span id="btn-serve-label" class="btn-main-text">SERVE</span>
+              <span id="btn-serve-sub" class="btn-sub-text">TAP TO TOSS</span>
+            </button>
+
+            <div class="shot-cluster">
+              <!-- Secondary Arc: LOB (top-left), SMASH (top-right), POWER (bottom-left) -->
+              <button
+                id="btn-lob"
+                type="button"
+                class="arcade-btn btn-secondary btn-lob"
+                aria-label="Lob Shot"
+              >
+                <span class="btn-main-text">LOB</span>
+                <span class="btn-sub-text">ARC</span>
+              </button>
+
+              <button
+                id="btn-smash"
+                type="button"
+                class="arcade-btn btn-secondary btn-smash smash-disabled"
+                aria-label="Smash Shot"
+                aria-disabled="true"
+              >
+                <span class="btn-main-text">SMASH</span>
+                <span id="btn-smash-sub" class="btn-sub-text">HIGH BALL</span>
+              </button>
+
+              <button
+                id="btn-power"
+                type="button"
+                class="arcade-btn btn-secondary btn-power"
+                aria-label="Power Shot"
+              >
+                <span class="btn-main-text">POWER</span>
+                <span id="btn-power-sub" class="btn-sub-text">DRIVE</span>
+              </button>
+
+              <!-- Primary Action: Large HIT Button -->
+              <button
+                id="btn-hit"
+                type="button"
+                class="arcade-btn btn-primary btn-hit"
+                aria-label="Normal Hit"
+              >
+                <span class="btn-main-text">HIT</span>
+                <span class="btn-sub-text">RETURN</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 4 Main Menu & Character / Difficulty Selection Modal -->
+        <div
+          id="main-menu-overlay"
+          class="menu-overlay-backdrop hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="main-menu-title"
+          aria-hidden="true"
+        >
+          <div class="menu-panel-card">
+            <div class="menu-header">
+              <div id="menu-progression-bar" class="menu-progression-bar">
+                <span id="menu-player-level" class="prog-level-pill">LVL 1</span>
+                <div class="prog-xp-track">
+                  <div id="menu-xp-fill" class="prog-xp-fill" style="width: 0%"></div>
+                  <span id="menu-xp-text" class="prog-xp-text">0 / 100 XP</span>
+                </div>
+                <span id="menu-player-coins" class="prog-coins-pill">&#9733; 0</span>
+              </div>
+              <h2 id="main-menu-title" class="menu-logo-title">TENNIS ANGEL</h2>
+              <p class="menu-subtitle">Choose your Chibi Champion &amp; AI Difficulty</p>
+            </div>
+
+            <div class="pause-section">
+              <span class="pause-section-label">SELECT CHARACTER</span>
+              <div class="character-select-grid">
+                <button
+                  type="button"
+                  class="char-card char-card-active"
+                  data-select-character="angel"
+                  aria-pressed="true"
+                >
+                  <span class="char-selected-pill">SELECTED</span>
+                  <div class="char-avatar-icon avatar-angel">&#9733;</div>
+                  <span class="char-card-name">PINK ANGEL</span>
+                  <span class="char-card-role">All-Rounder</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="char-card"
+                  data-select-character="sky_angel"
+                  aria-pressed="false"
+                >
+                  <span class="char-selected-pill">READY</span>
+                  <div class="char-avatar-icon avatar-sky">&#9889;</div>
+                  <span class="char-card-name">STARLIGHT</span>
+                  <span class="char-card-role">Speedster</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="char-card"
+                  data-select-character="sunny_duck"
+                  aria-pressed="false"
+                >
+                  <span class="char-selected-pill">READY</span>
+                  <div class="char-avatar-icon avatar-duck">&#9819;</div>
+                  <span class="char-card-name">SUNNY DUCK</span>
+                  <span class="char-card-role">Power Striker</span>
+                </button>
+
+                <button
+                  type="button"
+                  class="char-card char-card-locked"
+                  data-select-character="seraph"
+                  aria-pressed="false"
+                >
+                  <span class="char-selected-pill">LVL 2</span>
+                  <div class="char-avatar-icon avatar-seraph">&#10022;</div>
+                  <span class="char-card-name">SERAPHINA</span>
+                  <span class="char-card-role">Celestial Ace</span>
+                </button>
+              </div>
+
+              <!-- Live Character Preview & Stat Strip -->
+              <div id="char-preview-banner" class="char-preview-banner">
+                <div class="char-preview-info">
+                  <span id="char-preview-name" class="char-preview-name">PINK ANGEL &bull; ALL-ROUNDER</span>
+                  <span id="char-preview-desc" class="char-preview-desc">Balanced Chibi Angel &bull; Golden Halo &amp; Wing Drive</span>
+                </div>
+                <div class="char-preview-stats">
+                  <span id="char-preview-spd" class="char-stat-pill">SPD 85</span>
+                  <span id="char-preview-pwr" class="char-stat-pill">PWR 85</span>
+                  <span id="char-preview-ctl" class="char-stat-pill">CTL 92</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="pause-section">
+              <span class="pause-section-label">SELECT AI DIFFICULTY</span>
+              <div class="difficulty-pills">
+                <button
+                  type="button"
+                  class="diff-btn"
+                  data-menu-difficulty="easy"
+                >
+                  EASY
+                </button>
+                <button
+                  type="button"
+                  class="diff-btn diff-btn-active"
+                  data-menu-difficulty="normal"
+                >
+                  NORMAL
+                </button>
+                <button
+                  type="button"
+                  class="diff-btn"
+                  data-menu-difficulty="hard"
+                >
+                  HARD
+                </button>
+              </div>
+            </div>
+
+            <div class="menu-actions-row">
+              <button
+                id="btn-menu-play"
+                type="button"
+                class="pause-action-btn menu-btn-play"
+              >
+                PLAY MATCH
+              </button>
+              <button
+                id="btn-menu-settings"
+                type="button"
+                class="pause-action-btn menu-btn-settings"
+              >
+                SETTINGS
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Phase 4/5 Settings Modal -->
+        <div
+          id="settings-modal"
+          class="menu-overlay-backdrop hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="settings-modal-title"
+          aria-hidden="true"
+          style="z-index: 95"
+        >
+          <div class="menu-panel-card settings-card">
+            <div class="menu-header">
+              <span class="menu-kicker">CONFIGURATION</span>
+              <h2 id="settings-modal-title" class="pause-title">GAME SETTINGS</h2>
+            </div>
+
+            <div class="settings-grid">
+              <div class="pause-section">
+                <span class="pause-section-label" style="text-align: center">GRAPHICS QUALITY</span>
+                <div class="quality-pills">
+                  <button
+                    type="button"
+                    class="diff-btn diff-btn-active"
+                    data-settings-quality="high"
+                  >
+                    HIGH (60 FPS)
+                  </button>
+                  <button
+                    type="button"
+                    class="diff-btn"
+                    data-settings-quality="low"
+                  >
+                    LOW (BATTERY)
+                  </button>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-label">MOVEMENT ASSIST</span>
+                <button
+                  id="btn-toggle-assist"
+                  type="button"
+                  class="toggle-pill-btn toggle-btn-on"
+                >
+                  ON
+                </button>
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-label">CAMERA SHAKE</span>
+                <button
+                  id="btn-toggle-shake"
+                  type="button"
+                  class="toggle-pill-btn toggle-btn-on"
+                >
+                  ON
+                </button>
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-label">MUTE ALL AUDIO</span>
+                <button
+                  id="btn-toggle-mute"
+                  type="button"
+                  class="toggle-pill-btn"
+                >
+                  OFF
+                </button>
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-label">SFX VOLUME</span>
+                <div class="slider-control">
+                  <input
+                    id="input-sfx-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="80"
+                    aria-label="Sound Effects Volume"
+                  />
+                  <span id="label-sfx-volume" class="slider-value">80%</span>
+                </div>
+              </div>
+
+              <div class="setting-row">
+                <span class="setting-label">MUSIC VOLUME</span>
+                <div class="slider-control">
+                  <input
+                    id="input-bgm-volume"
+                    type="range"
+                    min="0"
+                    max="100"
+                    value="65"
+                    aria-label="Background Music Volume"
+                  />
+                  <span id="label-bgm-volume" class="slider-value">65%</span>
+                </div>
+              </div>
+            </div>
+
+            <button
+              id="btn-settings-close"
+              type="button"
+              class="pause-action-btn btn-resume-primary"
+            >
+              SAVE &amp; CLOSE
+            </button>
+          </div>
+        </div>
+
+        <!-- Phase 4/5 Results Screen Modal -->
+        <div
+          id="results-modal"
+          class="menu-overlay-backdrop hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="results-title"
+          aria-hidden="true"
+          style="z-index: 88"
+        >
+          <div class="menu-panel-card results-card">
+            <div class="menu-header">
+              <span class="menu-kicker">MATCH COMPLETE</span>
+              <h2 id="results-title" class="results-title results-victory">VICTORY!</h2>
+              <p id="results-subtitle" class="results-subtitle">ANGEL WINS THE MATCH!</p>
+            </div>
+
+            <div class="results-score-box">
+              <span class="results-score-caption">FINAL ROUND SCORE</span>
+              <div id="results-final-score" class="results-final-score">2 - 0</div>
+              <div id="results-rounds-list" class="results-rounds-list"></div>
+            </div>
+
+            <div class="results-stats-grid">
+              <div class="stat-box">
+                <span id="res-stat-perfects" class="stat-num">0</span>
+                <span class="stat-lbl">PERFECT HITS</span>
+              </div>
+              <div class="stat-box">
+                <span id="res-stat-aces" class="stat-num">0</span>
+                <span class="stat-lbl">ACES</span>
+              </div>
+              <div class="stat-box">
+                <span id="res-stat-points" class="stat-num">0</span>
+                <span class="stat-lbl">POINTS WON</span>
+              </div>
+            </div>
+
+            <!-- Phase 5 XP, Level & Character Unlock Rewards Strip -->
+            <div id="results-rewards-box" class="results-rewards-box">
+              <div class="rewards-top-row">
+                <span id="res-xp-earned" class="reward-pill reward-xp">+120 XP</span>
+                <span id="res-coins-earned" class="reward-pill reward-coins">+60 COINS</span>
+                <span id="res-level-badge" class="reward-pill reward-lvl">LVL 2</span>
+              </div>
+              <div id="res-unlock-banner" class="res-unlock-banner hidden">
+                NEW CHARACTER UNLOCKED: SERAPHINA!
+              </div>
+            </div>
+
+            <div class="pause-actions-grid">
+              <button
+                id="btn-results-rematch"
+                type="button"
+                class="pause-action-btn btn-resume-primary"
+              >
+                REMATCH
+              </button>
+              <button
+                id="btn-results-menu"
+                type="button"
+                class="pause-action-btn btn-restart-secondary"
+              >
+                MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pause Menu Overlay Modal -->
+        <div
+          id="pause-modal"
+          class="pause-modal hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="pause-modal-title"
+          aria-hidden="true"
+        >
+          <div class="pause-card">
+            <div class="pause-badge">TENNIS ANGEL</div>
+            <h2 id="pause-modal-title" class="pause-title">MATCH PAUSED</h2>
+
+            <div class="pause-section">
+              <span class="pause-section-label">AI DIFFICULTY</span>
+              <div class="difficulty-pills">
+                <button
+                  type="button"
+                  class="diff-btn"
+                  data-ai-difficulty="easy"
+                >
+                  EASY
+                </button>
+                <button
+                  type="button"
+                  class="diff-btn diff-btn-active"
+                  data-ai-difficulty="normal"
+                >
+                  NORMAL
+                </button>
+                <button
+                  type="button"
+                  class="diff-btn"
+                  data-ai-difficulty="hard"
+                >
+                  HARD
+                </button>
+              </div>
+            </div>
+
+            <div class="pause-section">
+              <span class="pause-section-label">GRAPHICS QUALITY</span>
+              <div class="quality-pills">
+                <button
+                  type="button"
+                  class="diff-btn diff-btn-active"
+                  data-graphics-quality="high"
+                >
+                  HIGH (60 FPS)
+                </button>
+                <button
+                  type="button"
+                  class="diff-btn"
+                  data-graphics-quality="low"
+                >
+                  LOW (BATTERY)
+                </button>
+              </div>
+            </div>
+
+            <div class="pause-actions-grid">
+              <button
+                id="btn-pause-resume"
+                type="button"
+                class="pause-action-btn btn-resume-primary"
+              >
+                RESUME
+              </button>
+              <button
+                id="btn-pause-restart"
+                type="button"
+                class="pause-action-btn btn-restart-secondary"
+              >
+                RESTART
+              </button>
+              <button
+                id="btn-pause-settings"
+                type="button"
+                class="pause-action-btn menu-btn-settings"
+              >
+                SETTINGS
+              </button>
+              <button
+                id="btn-pause-menu"
+                type="button"
+                class="pause-action-btn menu-btn-settings"
+              >
+                MAIN MENU
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

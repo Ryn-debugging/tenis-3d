@@ -1,0 +1,42 @@
+{
+  "name": "TENNIS ANGEL — 3D Arcade Tennis",
+  "short_name": "Tennis Angel",
+  "description": "Colorful 3D Chibi Arcade Tennis Game for Mobile & Android Browsers",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "landscape",
+  "background_color": "#1a0f0a",
+  "theme_color": "#d45d2a",
+  "categories": ["games", "sports"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/splash-landscape.png",
+      "sizes": "640x360",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "TENNIS ANGEL 3D Clay Court Gameplay"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# Dependencies & Build Output
+node_modules/
+dist/
+.vite/
+
+# Environment & Secrets
+.env
+.env.*
+*.jks
+*.keystore
+keystore.properties
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

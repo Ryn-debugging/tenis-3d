@@ -363,3 +363,24 @@ Build the actual game, not a static mockup.
 **Final objective:** deliver TENNIS ANGEL as a colorful, original, fully
 playable 3D arcade tennis game for mobile web browsers, inspired by the
 user's supplied reference image.
+
+## 21. Final Implementation & Release Status (Phases 0–5 Complete)
+
+- **Status:** Release Ready (`v1.0.0`, Phases 0–5 Completed & Verified in Headless Chromium WebGL + Playwright E2E)
+- **Playable Character Roster (`src/core/AssetManager.js`):**
+  - `angel` (**PINK ANGEL** — All-Rounder, Starter)
+  - `sky_angel` (**STARLIGHT** — Speedster, Starter)
+  - `sunny_duck` (**SUNNY DUCK** — Power Striker, Starter)
+  - `seraph` (**SERAPHINA** — Celestial Ace, Unlocks at Level 2 via XP progression)
+  - `duck` (**DUCK AI** — Easy, Normal, and Hard opponent profiles)
+- **Progression & Persistence (`src/data/SaveManager.js`):**
+  - Versioned `LocalStorage` schema (`tennis_angel_save_v1`, `version: 1`) persisting XP, Level, Coins, unlocked characters, selected character, AI difficulty, graphics quality, movement assist, camera shake, mute state, SFX/Music volumes, and lifetime match statistics with automatic recovery from corrupted or malformed storage data.
+- **Audio System (`src/audio/AudioManager.js`):**
+  - Powered by `Howler.js` with 13 original synthesized WAV assets in `public/audio/` (`bgm_arcade.wav`, `ui_tap.wav`, `serve_toss.wav`, `racket_hit.wav`, `racket_power.wav`, `racket_smash.wav`, `ball_bounce.wav`, `net_hit.wav`, `perfect_chime.wav`, `ace_fanfare.wav`, `point_chime.wav`, `victory_fanfare.wav`, `defeat_jingle.wav`).
+- **PWA & Offline Support (`public/manifest.webmanifest`, `public/sw.js`):**
+  - Landscape fullscreen web app manifest, `192x192` / `512x512` / maskable PNG icons, and versioned Service Worker pre-caching core app shell, icons, and audio assets for offline play.
+- **Native Android APK Packaging (`capacitor.config.json`, `android/`):**
+  - Packaged with Capacitor (`com.ryndebugging.tennisangel`, `TENNIS ANGEL`, `minSdk 24`, `targetSdk 36`), `sensorLandscape` lock, immersive sticky fullscreen WebView (`MainActivity.java`), original multi-density icons and splash screens, offline bundled assets, and signed Debug (`app-debug.apk`) & Release (`app-release.apk`) APKs verified with `apksigner` and `aapt2`.
+- **Hardware Testing Note:**
+  - Verified in automated Playwright mobile emulation (`1280x720` and compact Android `800x360` landscape viewports with touch/multi-touch Pointer Events) and Android SDK build/signing verification tools (`gradlew`, `apksigner`, `aapt2`). Physical Android device installation and playtesting remain recommended post-deployment.
+

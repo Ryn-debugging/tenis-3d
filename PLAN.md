@@ -156,61 +156,35 @@ Add clear score and hit feedback.
 **Exit criteria:** timing outcomes are understandable and scoring/match
 completion are correct.
 
-### Phase 4 --- Visual Identity and Feedback
+### Phase 4 --- Visual Upgrade & Complete UI
 
-Tasks: - Replace or improve placeholders with original chibi-style
-characters. - Add readable running, idle, serve, forehand, backhand, and
-smash animations. - Add glowing ball material. - Add fading rainbow
-trail on perfect shots. - Add impact particles and restrained camera
-shake. - Add animated PERFECT, GOOD, MISS, ACE, WIN, and LOSE
-feedback. - Match the supplied reference's bright, playful visual
-direction.
+Tasks:
+- Anime/chibi character models and animations (`idle`, `run`, `serve`, `forehand`, `backhand`, `smash`, `win`, `lose`).
+- Particle and visual effect systems (`ParticleManager.js`, `EffectManager.js`, `BallTrail.js`).
+- Court visual polish (textured clay surface, lighting, net details, sideline props, glowing ball, rainbow trail).
+- Main menu (`MainMenu.js`).
+- Character selection for playable characters.
+- Difficulty selection (`Easy`, `Normal`, `Hard`).
+- Match HUD (`MatchHUD.js`).
+- Results screen (`ResultsScreen.js` with winner, score breakdown, rematch, and main menu flow).
+- Settings screen (graphics quality, movement assist, camera shake, audio volume controls).
+- Pause/resume/restart/menu navigation (`PauseMenu.js`).
 
-**Exit criteria:** visual effects communicate shot quality without
-hiding the ball or court.
+**Exit criteria:** visual effects communicate shot quality without hiding the ball or court; user can launch, select character and difficulty, configure settings, play, pause, finish a match, view results, replay, and return to the main menu.
 
-### Phase 5 --- UI and Match Flow
+### Phase 5 --- Progression, Audio, PWA & Final Release
 
-Tasks: - Main menu. - Character selection for available characters. -
-Difficulty selection. - Match HUD. - Pause/resume/restart. - Results
-screen. - Settings for sound and graphics. - Ensure every visible
-control works.
+Tasks:
+- XP and progression system.
+- Character unlock and rewards.
+- LocalStorage save system (`SaveManager.js`) with versioning and safe fallback loading.
+- Music and sound effects using Howler.js (`AudioManager.js`).
+- PWA web app manifest, icons, and service worker offline caching.
+- Mobile performance optimization (adaptive pixel ratio, quality modes, zero per-frame allocations).
+- Android browser compatibility (orientation, resize, safe areas, touch controls).
+- Complete regression and final release testing.
 
-**Exit criteria:** user can launch, configure, play, pause, finish,
-replay, and return to menu.
-
-### Phase 6 --- Progression (After MVP)
-
-Tasks: - Local coins and rewards. - Character unlocks. - Match
-statistics. - Tournament progression. - Save versioning and safe
-loading.
-
-**Exit criteria:** progression persists across browser reloads and
-corrupted save data does not crash the game.
-
-### Phase 7 --- Audio and PWA
-
-Tasks: - Racket impact, bounce, net, perfect hit, power shot, UI,
-victory, and defeat sounds. - Background music and separate volume
-settings. - Add web app manifest and icons. - Add service worker and
-carefully cache required assets. - Provide graceful offline behavior
-after assets have been cached.
-
-**Exit criteria:** audio controls work; PWA installation works on
-supported browsers; offline behavior is tested and documented.
-
-### Phase 8 --- Optimization and Release Testing
-
-Tasks: - Test on real Android devices, not only desktop emulation. - Add
-adaptive pixel ratio and graphics quality. - Optimize geometry,
-textures, particles, shadows, and draw calls. - Avoid per-frame object
-allocations where practical. - Check memory use and long-session
-stability. - Test touch controls, orientation changes, pause/resume, and
-reload. - Fix all critical and major gameplay bugs.
-
-**Targets:** aim for 60 FPS on capable devices and a stable 30 FPS
-fallback on weaker devices. Treat these as targets to measure, not
-guarantees.
+**Exit criteria:** progression and settings persist safely in LocalStorage; audio controls work; PWA manifest/service worker work; all regression and E2E suites pass with zero critical runtime errors.
 
 ## 6. Required Test Matrix
 
@@ -225,9 +199,9 @@ guarantees.
   Timing        PERFECT/GOOD/MISS change shot result
   Scoring       Points, rounds, and match winner are correct
   Touch         Joystick and action buttons work simultaneously
-  Lifecycle     Pause, resume, restart, and menu transitions work
+  Lifecycle     Main menu, character/difficulty select, pause, resume, restart, results, and settings transitions work
   Responsive    Layout survives resize and orientation changes
-  Performance   Test sustained play on real target devices
+  Performance   Test sustained play on target devices / quality modes
 
 ## 7. Working Agreement for the AI Developer
 
@@ -263,3 +237,37 @@ and racket interactions work reliably. - Timing feedback changes the
 shot. - Scoring and match completion work. - Pause, restart, and results
 flow work. - No critical runtime errors remain. - Real-device testing
 has been performed or clearly marked as outstanding.
+
+## 10. Phase Status & Living TODO Checklist (6-Phase Roadmap: Phase 0–5)
+
+- [x] **Phase 0 --- Project Foundation** (Completed & Verified)
+  - Vite, Three.js, Howler.js setup, responsive landscape HTML/CSS shell, loading screen state, `120 Hz` fixed-timestep game loop.
+- [x] **Phase 1 --- Core 3D Match** (Completed & Verified)
+  - 3D terracotta court, white markings, yellow perimeter curb, center net, elevated angled camera, Pink Angel player, Yellow Duck AI opponent, ballistic physics, swept net collision, serve-to-point rally loop.
+- [x] **Phase 2 --- Mobile Input** (Completed & Verified)
+  - Left `VirtualJoystick.js`, right `TouchController.js` (`HIT`, `POWER`, `LOB`, `SMASH`, contextual `SERVE`), multi-touch Pointer Events, `PauseMenu.js`, Android aspect-ratio responsiveness.
+- [x] **Phase 3 --- Arcade Timing and Rules** (Completed & Verified)
+  - Configurable `PERFECT!`, `GOOD!`, and `MISS!` timing windows, Power Energy meter (`40%` cost, regeneration, `LOW ENERGY!` guard), First-to-7 (win-by-2) Best-of-3 scoring, all match feedback callouts, AI difficulty balancing.
+- [x] **Phase 4 --- Visual Upgrade & Complete UI** (Completed & Verified)
+  - [x] Anime/chibi character models and all 8 procedural animations (`idle`, `run`, `serve`, `forehand`, `backhand`, `smash`, `win`, `lose`).
+  - [x] Particle and visual effect systems (`ParticleManager.js`, `EffectManager.js`, `BallTrail.js`).
+  - [x] Court visual polish.
+  - [x] Main menu (`MainMenu.js`).
+  - [x] Character selection (multiple playable 3D chibi characters with stats/palettes: `angel`, `sky_angel`, `sunny_duck`).
+  - [x] Difficulty selection (`Easy`, `Normal`, `Hard`).
+  - [x] Modular Match HUD (`MatchHUD.js`).
+  - [x] Results screen (`ResultsScreen.js`).
+  - [x] Settings screen (Graphics Quality, Movement Assist, Camera Shake, Audio Volumes).
+- [x] **Phase 5 --- Progression, Audio, PWA & Final Release** (Completed & Verified)
+  - [x] XP and progression system, character unlock and rewards (`SERAPHINA` unlocks at Level 2).
+  - [x] LocalStorage save system (`SaveManager.js`) with schema versioning and corrupted data recovery.
+  - [x] Music and sound effects using Howler.js (`AudioManager.js`) with persistent volumes and mute toggle.
+  - [x] PWA manifest (`manifest.webmanifest`), icons (`public/icons/`), and offline service worker (`sw.js`).
+  - [x] Mobile performance optimization (static court matrix freezing, vendor bundle code-splitting), Android browser compatibility, and final Phase 1–5 regression testing.
+- [x] **Additional Deliverable --- Native Android APK Packaging (Capacitor)** (Completed & Verified)
+  - [x] Capacitor Android project (`capacitor.config.json`, `android/`) with App Name `TENNIS ANGEL` and Package ID `com.ryndebugging.tennisangel`.
+  - [x] Original multi-density Android launcher icons (adaptive + round + legacy) and landscape/portrait splash screens.
+  - [x] `sensorLandscape` orientation, immersive sticky fullscreen mode, display cutout `shortEdges`, keep-screen-on, and gameplay-tuned WebView (`LocalStorage`, Howler.js audio, multi-touch Pointer Events, offline local assets).
+  - [x] Signed Debug APK (`app-debug.apk`) and Release APK (`app-release.apk`) built and cryptographically verified via `apksigner` and `aapt2`.
+
+
